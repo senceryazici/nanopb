@@ -32,8 +32,6 @@ except ImportError:
 
 nanopb_root = os.path.join(os.getcwd(), '..')
 
-include_dir = env.GetProjectOption("custom_nanopb_include_dir", default=None)
-
 # Check if 'custom_nanopb_project_dir' is defined, else default to $PROJECT_DIR
 project_dir = env.GetProjectOption("custom_nanopb_project_dir", default=None)
 if project_dir:
@@ -42,6 +40,10 @@ else:
     project_dir = env.subst("$PROJECT_DIR")
 
 build_dir = env.subst("$BUILD_DIR")
+
+include_dir = env.GetProjectOption("custom_nanopb_include_dir", default=None)
+
+include_dir = os.path.join(project_dir, include_dir) if include_dir else None
 
 generated_src_dir = os.path.join(build_dir, 'nanopb', 'generated-src')
 generated_build_dir = os.path.join(build_dir, 'nanopb', 'generated-build')
