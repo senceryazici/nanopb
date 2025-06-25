@@ -1,8 +1,8 @@
-import os
 import hashlib
 import pathlib
 import shlex
 import subprocess
+import os
 
 import SCons.Action
 from platformio import fs
@@ -31,6 +31,8 @@ except ImportError:
 
 
 nanopb_root = os.path.join(os.getcwd(), '..')
+
+include_dir = env.GetProjectOption("custom_nanopb_include_dir", default=None)
 
 # Check if 'custom_nanopb_project_dir' is defined, else default to $PROJECT_DIR
 project_dir = env.GetProjectOption("custom_nanopb_project_dir", default=None)
@@ -82,6 +84,9 @@ else:
 
     # Collect include dirs based on
     proto_include_dirs = set()
+    if include_dir is not None:
+        proto_include_dirs.add(str(pathlib.Path(include_dir).resolve()) if include_dir else None)
+
     for proto_file in protos_files:
         proto_file_abs = os.path.join(project_dir, proto_file)
         proto_dir = os.path.dirname(proto_file_abs)
@@ -95,6 +100,9 @@ else:
 
         proto_file_path_abs = os.path.dirname(proto_file_abs)
         proto_file_basename = os.path.basename(proto_file_abs)
+        if include_dir is not None:
+            proto_file_rel_path = os.path.relpath(proto_file_abs, include_dir)
+            proto_file_basename = proto_file_rel_path
         proto_file_without_ext = os.path.splitext(proto_file_basename)[0]
 
         proto_file_md5_abs = os.path.join(md5_dir, proto_file_basename + '.md5')
@@ -138,15 +146,16 @@ else:
         options_info = f"{options_file}" if options_file else "no options"
 
         if not need_generate:
-            print(f"[nanopb] Skipping '{proto_file}' ({options_info})")
+            print(f"[nanopb] Skipping '{proto_file_basename}' ({options_info})")
         else:
-            print(f"[nanopb] Processing '{proto_file}' ({options_info})")
+            print(f"[nanopb] Processing '{proto_file_basename}' ({options_info})")
             cmd = [python_exe, nanopb_generator] + nanopb_options + [proto_file_basename]
             action = SCons.Action.CommandAction(cmd)
             result = env.Execute(action)
             if result != 0:
                 print(f"[nanopb] ERROR: ({result}) processing cmd: '{cmd}'")
                 exit(1)
+            pathlib.Path(proto_file_md5_abs).parent.mkdir(parents=True, exist_ok=True)
             pathlib.Path(proto_file_md5_abs).write_text(proto_file_current_md5)
             if options_file:
                 pathlib.Path(options_file_md5_abs).write_text(options_file_current_md5)
